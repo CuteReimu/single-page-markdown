@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown 预览</title>
+
+  <!-- markdown-it via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
+
+  <!-- highlight.js 代码高亮（via cdnjs） -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <style>
+    /* ── 全局重置 ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      background: #f5f6fa;
+      color: #24292f;
+      line-height: 1.7;
+    }
+
+    /* ── 整体布局：左内容 + 右 TOC ── */
+    .page-wrapper {
+      display: flex;
+      align-items: flex-start;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      gap: 1.5rem;
+    }
+
+    /* ── 文章容器 ── */
+    #markdown-body {
+      flex: 1 1 0;
+      min-width: 0;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      padding: 2.5rem 3rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+
+    /* ── TOC 侧边栏 ── */
+    #toc-sidebar {
+      flex: 0 0 220px;
+      position: sticky;
+      top: 2rem;
+      max-height: calc(100vh - 4rem);
+      overflow-y: auto;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      font-size: 0.85rem;
+    }
+
+    #toc-sidebar::-webkit-scrollbar { width: 4px; }
+    #toc-sidebar::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 4px; }
+
+    .toc-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #57606a;
+      margin-bottom: .75rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid #d0d7de;
+    }
+
+    .toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .toc-list li a {
+      display: block;
+      padding: .22em .5em;
+      border-radius: 4px;
+      color: #57606a;
+      text-decoration: none;
+      line-height: 1.4;
+      transition: color .15s, background .15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-left: 2px solid transparent;
+    }
+
+    .toc-list li a:hover {
+      color: #0969da;
+      background: #f6f8fa;
+    }
+
+    /* 激活项 —— 仿 vuepress-theme-hope 蓝色左边框 */
+    .toc-list li a.active {
+      color: #0969da;
+      font-weight: 600;
+      border-left-color: #0969da;
+      background: #ddf4ff;
+    }
+
+    /* 层级缩进 + 字号 + 字重（用 !important 确保覆盖 padding 简写） */
+    .toc-list li a.toc-h1 { padding-left: .4rem  !important; font-size: .9rem;  font-weight: 700; color: #24292f; }
+    .toc-list li a.toc-h2 { padding-left: .4rem  !important; font-size: .88rem; font-weight: 600; color: #24292f; }
+    .toc-list li a.toc-h3 { padding-left: 1.1rem !important; font-size: .85rem; font-weight: 400; color: #444d56; }
+    .toc-list li a.toc-h4 { padding-left: 1.8rem !important; font-size: .82rem; font-weight: 400; color: #6a737d; }
+    .toc-list li a.toc-h5 { padding-left: 2.5rem !important; font-size: .80rem; font-weight: 400; color: #6a737d; }
+    .toc-list li a.toc-h6 { padding-left: 3.2rem !important; font-size: .78rem; font-weight: 400; color: #6a737d; }
+
+    /* ── 标题 ── */
+    #markdown-body h1,
+    #markdown-body h2,
+    #markdown-body h3,
+    #markdown-body h4,
+    #markdown-body h5,
+    #markdown-body h6 {
+      font-weight: 600;
+      margin-top: 1.6em;
+      margin-bottom: .6em;
+      line-height: 1.3;
+      scroll-margin-top: 1rem;
+    }
+    #markdown-body h1 { font-size: 2em;   border-bottom: 2px solid #d0d7de; padding-bottom: .3em; }
+    #markdown-body h2 { font-size: 1.5em; border-bottom: 1px solid #d0d7de; padding-bottom: .25em; }
+    #markdown-body h3 { font-size: 1.25em; }
+
+    /* ── 段落 & 文字 ── */
+    #markdown-body p      { margin-bottom: 1em; }
+    #markdown-body strong { font-weight: 600; }
+    #markdown-body em     { font-style: italic; }
+    #markdown-body a      { color: #0969da; text-decoration: none; }
+    #markdown-body a:hover{ text-decoration: underline; }
+
+    /* ── 列表 ── */
+    #markdown-body ul,
+    #markdown-body ol {
+      padding-left: 2em;
+      margin-bottom: 1em;
+    }
+    #markdown-body li { margin-bottom: .3em; }
+
+    /* ── 引用块 ── */
+    #markdown-body blockquote {
+      border-left: 4px solid #d0d7de;
+      color: #57606a;
+      padding: .4em 1em;
+      margin: 1em 0;
+      background: #f6f8fa;
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* ── 行内代码 ── */
+    #markdown-body code:not(pre code) {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 4px;
+      padding: .15em .4em;
+      font-size: .9em;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    /* ── 代码块 ── */
+    #markdown-body pre {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 1em 1.2em;
+      overflow-x: auto;
+      margin-bottom: 1em;
+      font-size: .9em;
+    }
+    #markdown-body pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    /* ── 表格 ── */
+    #markdown-body table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 1em;
+    }
+    #markdown-body th,
+    #markdown-body td {
+      border: 1px solid #d0d7de;
+      padding: .5em .8em;
+      text-align: left;
+    }
+    #markdown-body th { background: #f6f8fa; font-weight: 600; }
+    #markdown-body tr:nth-child(even) td { background: #f6f8fa; }
+
+    /* ── 分割线 ── */
+    #markdown-body hr {
+      border: none;
+      border-top: 1px solid #d0d7de;
+      margin: 1.5em 0;
+    }
+
+    /* ── 图片 ── */
+    #markdown-body img {
+      max-width: 100%;
+      border-radius: 4px;
+    }
+
+    /* ── 响应式：窄屏隐藏 TOC ── */
+    @media (max-width: 900px) {
+      #toc-sidebar { display: none; }
+      #markdown-body { padding: 1.2rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-wrapper">
+    <!-- 正文 -->
+    <article id="markdown-body"></article>
+
+    <!-- TOC 侧边栏 -->
+    <nav id="toc-sidebar">
+      <div class="toc-title">📋 目录</div>
+      <ul class="toc-list" id="toc-list"></ul>
+    </nav>
+  </div>
+
+  <script>
+    /* ============================================================
+       Markdown 内容（修改这里即可）
+       ============================================================ */
+    const markdownContent = `
+# 欢迎使用 Markdown 预览页面 🎉
+
+这是一个**纯静态**单页应用，通过 [markdown-it](https://github.com/markdown-it/markdown-it) 将 Markdown 字符串渲染为可视化网页内容。
+
+---
+
+## 文字样式
+
+- **加粗文本**
+- *斜体文本*
+- ~~删除线~~
+- \`行内代码\`
+- [超链接示例](https://github.com)
+
+---
+
+## 引用块
+
+> "Stay hungry, stay foolish."
+> — Steve Jobs
+
+---
+
+## 有序 & 无序列表
+
+### 无序列表
+- 苹果
+- 香蕉
+  - 大香蕉
+  - 小香蕉
+- 橙子
+
+### 有序列表
+1. 第一步：打开编辑器
+2. 第二步：编写代码
+3. 第三步：运行预览
+
+---
+
+## 代码块
+
+\`\`\`javascript
+// 斐波那契数列（递归）
+function fib(n) {
+  if (n <= 1) return n;
+  return fib(n - 1) + fib(n - 2);
+}
+
+console.log(fib(10)); // 55
+\`\`\`
+
+---
+
+## 表格
+
+| 姓名   | 职位       | 城市   |
+|--------|-----------|--------|
+| 张三   | 前端工程师 | 北京   |
+| 李四   | 后端工程师 | 上海   |
+| 王五   | 产品经理   | 深圳   |
+
+---
+
+## 图片
+
+![Markdown Logo](https://markdown-here.com/img/icon256.png)
+
+---
+
+> 你可以直接修改上方 \`markdownContent\` 变量的内容，刷新页面即可看到效果。
+`;
+
+    /* ============================================================
+       初始化 markdown-it，启用代码高亮
+       ============================================================ */
+    const md = markdownit({
+      html: true,          // 允许 HTML 标签
+      linkify: true,       // 自动将 URL 转为链接
+      typographer: true,   // 排版优化
+      highlight(str, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+          try {
+            return '<pre><code class="hljs language-' + lang + '">' +
+              hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+              '</code></pre>';
+          } catch (_) { /* ignore */ }
+        }
+        return '<pre><code class="hljs">' + md.utils.escapeHtml(str) + '</code></pre>';
+      }
+    });
+
+    /* ── 渲染 Markdown ── */
+    document.getElementById('markdown-body').innerHTML = md.render(markdownContent);
+
+    /* ============================================================
+       生成 TOC
+       ============================================================ */
+    (function buildToc() {
+      const body    = document.getElementById('markdown-body');
+      const tocList = document.getElementById('toc-list');
+      const headings = Array.from(body.querySelectorAll('h2,h3'));
+
+      if (!headings.length) {
+        document.getElementById('toc-sidebar').style.display = 'none';
+        return;
+      }
+
+      headings.forEach((heading, i) => {
+        /* 给每个标题加唯一 id，用于锚点跳转 */
+        if (!heading.id) {
+          heading.id = 'heading-' + i + '-' + heading.textContent.trim()
+            .toLowerCase().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fa5-]/g, '');
+        }
+
+        const level = parseInt(heading.tagName[1], 10); // 1-6
+        const li    = document.createElement('li');
+        const a     = document.createElement('a');
+        a.href        = '#' + heading.id;
+        a.textContent = heading.textContent;
+        a.className   = 'toc-h' + level;
+        a.dataset.id  = heading.id;
+
+        /* 平滑滚动 */
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          document.getElementById(heading.id)
+            .scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        li.appendChild(a);
+        tocList.appendChild(li);
+      });
+
+      /* ── Scroll-spy：IntersectionObserver 实现激活高亮 ── */
+      const allLinks = Array.from(tocList.querySelectorAll('a'));
+      let activeId   = null;
+
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            activeId = entry.target.id;
+          }
+        });
+        /* 找到当前可见的第一个标题 */
+        const visible = headings.filter(h => {
+          const rect = h.getBoundingClientRect();
+          return rect.top >= 0 && rect.top < window.innerHeight * 0.6;
+        });
+        const current = visible[0] || headings.find(h => h.id === activeId);
+        if (!current) return;
+
+        allLinks.forEach(a => a.classList.toggle('active', a.dataset.id === current.id));
+
+        /* 让激活项在 TOC 内自动滚动可见 */
+        const activeLink = tocList.querySelector('a.active');
+        if (activeLink) {
+          const sidebar = document.getElementById('toc-sidebar');
+          const linkTop = activeLink.offsetTop;
+          const sidebarH = sidebar.clientHeight;
+          if (linkTop < sidebar.scrollTop || linkTop > sidebar.scrollTop + sidebarH - 40) {
+            sidebar.scrollTop = linkTop - sidebarH / 2;
+          }
+        }
+      }, { rootMargin: '0px 0px -60% 0px', threshold: 0 });
+
+      headings.forEach(h => observer.observe(h));
+    })();
+  </script>
+
+</body>
+</html>
+
