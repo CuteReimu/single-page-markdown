@@ -212,6 +212,44 @@
       border-radius: 4px;
     }
 
+    /* ── 笔记区 ── */
+    #note-area {
+      width: 100%;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #d0d7de;
+    }
+
+    .note-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #57606a;
+      margin-bottom: .5rem;
+    }
+
+    #note-input {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: .5rem .6rem;
+      font-size: 0.82rem;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      line-height: 1.5;
+      color: #24292f;
+      background: #f6f8fa;
+      outline: none;
+      transition: border-color .15s, background .15s;
+    }
+
+    #note-input:focus {
+      border-color: #0969da;
+      background: #ffffff;
+    }
+
     /* ── 响应式：窄屏隐藏 TOC ── */
     @media (max-width: 900px) {
       #toc-sidebar { display: none; }
@@ -229,6 +267,10 @@
     <nav id="toc-sidebar">
       <div class="toc-title">📋 目录</div>
       <ul class="toc-list" id="toc-list"></ul>
+      <div id="note-area">
+        <div class="note-title">📝 笔记</div>
+        <textarea id="note-input" placeholder="在此记录临时笔记…"></textarea>
+      </div>
     </nav>
   </div>
 
